@@ -1032,6 +1032,22 @@ func (p *ExcelPagingPrinter) printTableRows(rows [][]*enigma.NxCell, sheet strin
 				}
 			}
 
+			if hasColInfo && p.report.ColumnHeaderFormats != nil {
+				colInfo := p.layout.ColumnInfos[ci]
+				if colHeaderFmt, ok := p.report.ColumnHeaderFormats[colInfo.FallbackTitle]; ok {
+					alignment := strings.ToLower(strings.TrimSpace(colHeaderFmt.Alignment))
+					if alignment == "left" || alignment == "center" || alignment == "right" {
+						if excelStyle == nil {
+							excelStyle = &excelize.Style{}
+						}
+						if excelStyle.Alignment == nil {
+							excelStyle.Alignment = &excelize.Alignment{}
+						}
+						excelStyle.Alignment.Horizontal = alignment
+					}
+				}
+			}
+
 			if p.report.TableWrapText {
 				if excelStyle == nil {
 					excelStyle = &excelize.Style{}

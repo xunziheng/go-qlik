@@ -109,6 +109,7 @@ type ColumnHeaderFormat struct {
 	Width            float64 `json:"width,omitempty"`
 	FontSize         float64 `json:"font_size,omitempty"`
 	DisableSubtotals bool    `json:"disable_subtotals,omitempty"`
+	Alignment        string  `json:"alignment,omitempty"`
 }
 
 // PageSize	Paper Type	Dimensions
