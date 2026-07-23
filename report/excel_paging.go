@@ -863,10 +863,24 @@ func (p *ExcelPagingPrinter) printCustomFooters(colCount int, sheet string, rect
 		// Merge all columns in this row into one cell
 		startCell, _ := excelize.CoordinatesToCellName(footerColStart, footerRowStart+fi)
 		endCell, _ := excelize.CoordinatesToCellName(footerColStart+colCount-1, footerRowStart+fi)
-		p.excel.MergeCell(sheet, startCell, endCell)
+		if err := p.excel.MergeCell(sheet, startCell, endCell); err != nil {
+			return nil, util.Error("MergeCell", err)
+		}
 
 		// Print joined label + text
 		p.excel.SetCellStr(sheet, startCell, footer.Label+" "+textVal)
+		styleId, err := p.excel.NewStyle(&excelize.Style{
+			Alignment: &excelize.Alignment{
+				WrapText: true,
+				Vertical: "top",
+			},
+		})
+		if err != nil {
+			return nil, util.Error("NewStyle", err)
+		}
+		if err := p.excel.SetCellStyle(sheet, startCell, endCell, styleId); err != nil {
+			return nil, util.Error("SetCellStyle", err)
+		}
 	}
 
 	resRect.Height = len(p.report.Footers)
