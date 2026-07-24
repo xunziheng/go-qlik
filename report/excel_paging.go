@@ -76,6 +76,40 @@ func NewExcelPagingPrinter(config ExcelPagingConfig) *ExcelPagingPrinter {
 	return p
 }
 
+func (p *ExcelPagingPrinter) isColumnExcluded(title string) bool {
+	for _, excludedTitle := range p.report.ExcludedColumnTitles {
+		if title == excludedTitle {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *ExcelPagingPrinter) exportedColumnCount() int {
+	count := 0
+	for _, colInfo := range p.layout.ColumnInfos {
+		if colInfo != nil && !p.isColumnExcluded(colInfo.FallbackTitle) {
+			count++
+		}
+	}
+	return count
+}
+
+func (p *ExcelPagingPrinter) reportColumnIndex(cubeColumnIndex int) (int, bool) {
+	if p.cube2report == nil {
+		return cubeColumnIndex, true
+	}
+	reportColumnIndex, ok := p.cube2report[cubeColumnIndex]
+	return reportColumnIndex, ok
+}
+
+func (p *ExcelPagingPrinter) mappedColumnCount(originalColumnCount int) int {
+	if p.cube2report == nil {
+		return originalColumnCount
+	}
+	return len(p.cube2report)
+}
+
 // setRowHeight sets row height for the given rows if Report.RowHeight is configured.
 func (p *ExcelPagingPrinter) setRowHeight(sheet string, startRow, endRow int) *util.Result {
 	if p.report.RowHeight == nil {
@@ -371,10 +405,14 @@ func (p *ExcelPagingPrinter) printColumnNumbers(colCount int, sheet string, rect
 func (p *ExcelPagingPrinter) printPageSubtotals(subtotals []float64, isNumeric []bool, sheet string, rect enigma.Rect) (*enigma.Rect, *util.Result) {
 	resRect := rect
 	resRect.Height = 1
-	resRect.Width = len(subtotals)
+	resRect.Width = p.mappedColumnCount(len(subtotals))
 
 	for ci, subtotal := range subtotals {
-		cellName, err := excelize.CoordinatesToCellName(rect.Left+ci, rect.Top)
+		reportColIx, ok := p.reportColumnIndex(ci)
+		if !ok {
+			continue
+		}
+		cellName, err := excelize.CoordinatesToCellName(rect.Left+reportColIx, rect.Top)
 		if err != nil {
 			return nil, util.Error("CoordinatesToCellName", err)
 		}
@@ -403,7 +441,7 @@ func (p *ExcelPagingPrinter) printPageSubtotals(subtotals []float64, isNumeric [
 			}
 		}
 
-		if ci == 0 {
+		if reportColIx == 0 {
 			p.excel.SetCellStr(sheet, cellName, "Page Subtotal")
 		} else if isNumeric[ci] {
 			p.excel.SetCellFloat(sheet, cellName, subtotal, -1, 64)
@@ -427,10 +465,14 @@ func (p *ExcelPagingPrinter) printGrandTotals(grandTotals []float64, isNumeric [
 
 	resRect := rect
 	resRect.Height = 1
-	resRect.Width = len(grandTotals)
+	resRect.Width = p.mappedColumnCount(len(grandTotals))
 
 	for ci, total := range grandTotals {
-		cellName, err := excelize.CoordinatesToCellName(rect.Left+ci, rect.Top)
+		reportColIx, ok := p.reportColumnIndex(ci)
+		if !ok {
+			continue
+		}
+		cellName, err := excelize.CoordinatesToCellName(rect.Left+reportColIx, rect.Top)
 		if err != nil {
 			logger.Err(err).Msgf("CoordinatesToCellName failed for col %d", ci)
 			return nil, util.Error("CoordinatesToCellName", err)
@@ -462,7 +504,7 @@ func (p *ExcelPagingPrinter) printGrandTotals(grandTotals []float64, isNumeric [
 			}
 		}
 
-		if ci == 0 {
+		if reportColIx == 0 {
 			p.excel.SetCellStr(sheet, cellName, "Grand Total")
 			logger.Debug().Msgf("col[%d] %s: Grand Total label", ci, cellName)
 		} else if isNumeric[ci] {
@@ -506,6 +548,7 @@ func (p *ExcelPagingPrinter) printTableHeader(sheet string, rect enigma.Rect) (*
 	p.layout.ColumnInfos = make([]*engine.ColumnInfo, 0)
 	p.cube2report = make(map[int]int)
 	ColCnt := 0
+	reportColCnt := 0
 	colHeaderStyles := make(map[int]int) // per-column style IDs for groupTableHeader
 
 	boldStyle := &excelize.Style{
@@ -541,9 +584,14 @@ func (p *ExcelPagingPrinter) printTableHeader(sheet string, rect enigma.Rect) (*
 		}
 		p.layout.ColumnInfos = append(p.layout.ColumnInfos, colInfo)
 		cellText := colInfo.FallbackTitle
+		if p.isColumnExcluded(cellText) {
+			logger.Info().Msgf("exclude column %d (%s) from export", ColCnt, cellText)
+			ColCnt++
+			continue
+		}
 
 		var pHeaderFmt *ColumnHeaderFormat
-		p.cube2report[ColCnt] = ColCnt
+		p.cube2report[ColCnt] = reportColCnt
 		if p.report.ColumnHeaderFormats != nil {
 			if colHeaderFmt, ok := p.report.ColumnHeaderFormats[cellText]; ok {
 				if colHeaderFmt.ColumnType == StaticColumnType {
@@ -643,6 +691,7 @@ func (p *ExcelPagingPrinter) printTableHeader(sheet string, rect enigma.Rect) (*
 		}
 
 		ColCnt++
+		reportColCnt++
 	}
 
 	// Handle static columns
@@ -653,12 +702,12 @@ func (p *ExcelPagingPrinter) printTableHeader(sheet string, rect enigma.Rect) (*
 				cellName, _ := excelize.CoordinatesToCellName(rect.Left+repIdx, rect.Top+1)
 				p.excel.SetCellStr(sheet, cellName, colHeaderFmt.Label)
 				p.excel.SetCellStyle(sheet, cellName, cellName, styleId)
-				ColCnt++
+				reportColCnt++
 			}
 		}
 	}
 
-	resRect.Width = ColCnt
+	resRect.Width = reportColCnt
 
 	// Set header row height: RowHeight as default, HeadersRowHeight as override
 	headerRowHeight := p.report.RowHeight
@@ -676,7 +725,7 @@ func (p *ExcelPagingPrinter) printTableHeader(sheet string, rect enigma.Rect) (*
 	}
 
 	// Group table headers according to HeaderGroups configuration
-	if res := p.groupTableHeader(sheet, rect, ColCnt, styleId, colHeaderStyles); res != nil {
+	if res := p.groupTableHeader(sheet, rect, reportColCnt, styleId, colHeaderStyles); res != nil {
 		return nil, res.With("groupTableHeader")
 	}
 
@@ -693,8 +742,10 @@ func (p *ExcelPagingPrinter) groupTableHeader(sheet string, rect enigma.Rect, co
 
 	inGroup := make(map[int]bool)
 	for _, group := range p.Config.HeaderGroups {
-		for i := group.Start; i < group.Start+group.Length && i < colCount; i++ {
-			inGroup[i] = true
+		for cubeCol := group.Start; cubeCol < group.Start+group.Length; cubeCol++ {
+			if reportCol, ok := p.cube2report[cubeCol]; ok {
+				inGroup[reportCol] = true
+			}
 		}
 	}
 
@@ -736,18 +787,21 @@ func (p *ExcelPagingPrinter) groupTableHeader(sheet string, rect enigma.Rect, co
 
 	// For each header group, merge 1st row cells and set group name
 	for _, group := range p.Config.HeaderGroups {
-		if group.Start >= colCount {
-			logger.Warn().Msgf("group start %d exceeds column count %d, skipping", group.Start, colCount)
+		groupColumns := make([]int, 0, group.Length)
+		for cubeCol := group.Start; cubeCol < group.Start+group.Length; cubeCol++ {
+			if reportCol, ok := p.cube2report[cubeCol]; ok {
+				groupColumns = append(groupColumns, reportCol)
+			}
+		}
+		if len(groupColumns) == 0 {
+			logger.Warn().Msgf("group %s has no exported columns, skipping", group.Name)
 			continue
 		}
 
-		endCol := group.Start + group.Length - 1
-		if endCol >= colCount {
-			endCol = colCount - 1
-			logger.Warn().Msgf("group end adjusted to %d (column count: %d)", endCol, colCount)
-		}
+		startCol := groupColumns[0]
+		endCol := groupColumns[len(groupColumns)-1]
 
-		startCell, err := excelize.CoordinatesToCellName(rect.Left+group.Start, rect.Top)
+		startCell, err := excelize.CoordinatesToCellName(rect.Left+startCol, rect.Top)
 		if err != nil {
 			logger.Err(err).Msg("CoordinatesToCellName for group start")
 			return util.Error("CoordinatesToCellName", err)
@@ -766,7 +820,7 @@ func (p *ExcelPagingPrinter) groupTableHeader(sheet string, rect enigma.Rect, co
 
 		p.excel.SetCellStr(sheet, startCell, group.Name)
 		colStyle := styleId
-		if cs, ok := colHeaderStyles[group.Start]; ok {
+		if cs, ok := colHeaderStyles[startCol]; ok {
 			colStyle = cs
 		}
 		p.excel.SetCellStyle(sheet, startCell, endCell, colStyle)
@@ -985,13 +1039,13 @@ func (p *ExcelPagingPrinter) printTableRows(rows [][]*enigma.NxCell, sheet strin
 
 	for ri, rowCells := range rows {
 		for ci, cell := range rowCells {
-			if ci >= len(p.cube2report) {
+			reportColIx, ok := p.reportColumnIndex(ci)
+			if !ok {
 				continue
 			}
 			if cell == nil {
 				continue
 			}
-			reportColIx := p.cube2report[ci]
 			reportRowIx := rect.Top + ri
 
 			cellName, err := excelize.CoordinatesToCellName(rect.Left+reportColIx, reportRowIx)
@@ -1125,7 +1179,7 @@ func (p *ExcelPagingPrinter) printPage(pageNum int, rows [][]*enigma.NxCell, tot
 	}
 
 	currentRow := 1
-	colCount := len(p.layout.ColumnInfos)
+	colCount := p.exportedColumnCount()
 
 	// 1. Report Title
 	if p.Config.ReportTitle != "" {
@@ -1370,6 +1424,7 @@ func (p *ExcelPagingPrinter) Print(r Report) *util.Result {
 	p.layout.ColumnInfos = make([]*engine.ColumnInfo, 0)
 	tempCube2report := make(map[int]int)
 	ColCnt := 0
+	reportColCnt := 0
 
 	for _, colIx := range ColumnOrder {
 		var colInfo *engine.ColumnInfo
@@ -1389,8 +1444,12 @@ func (p *ExcelPagingPrinter) Print(r Report) *util.Result {
 		}
 		p.layout.ColumnInfos = append(p.layout.ColumnInfos, colInfo)
 
-		tempCube2report[ColCnt] = ColCnt
 		cellText := colInfo.FallbackTitle
+		if p.isColumnExcluded(cellText) {
+			ColCnt++
+			continue
+		}
+		tempCube2report[ColCnt] = reportColCnt
 		if r.ColumnHeaderFormats != nil {
 			if colHeaderFmt, ok := r.ColumnHeaderFormats[cellText]; ok {
 				if colHeaderFmt.ColumnType == StaticColumnType {
@@ -1399,7 +1458,12 @@ func (p *ExcelPagingPrinter) Print(r Report) *util.Result {
 			}
 		}
 		ColCnt++
+		reportColCnt++
 	}
+	if len(tempCube2report) == 0 {
+		return util.MsgError("CheckColumns", "all data columns are excluded from export")
+	}
+	p.cube2report = tempCube2report
 
 	// Reorganize pages into a row-based structure to handle column pagination
 	// When hypercube has many columns, data is split into multiple pages with different Area.Left offsets

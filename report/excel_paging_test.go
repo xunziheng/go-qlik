@@ -263,6 +263,48 @@ func TestExcelPagingPrinter_PrintPageSubtotals(t *testing.T) {
 	}
 }
 
+func TestExcelPagingPrinter_PrintPageSubtotalsWithExcludedColumn(t *testing.T) {
+	printer := NewExcelPagingPrinter(DefaultExcelPagingConfig())
+	excel := excelize.NewFile()
+	sheetName := "TestSheet"
+	excel.NewSheet(sheetName)
+	logger := loggers.CoreDebugLogger
+
+	printer.excel = excel
+	printer.logger = logger
+	printer.report = Report{AllBorders: false}
+	printer.layout = &engine.ObjectLayoutEx{}
+	printer.cube2report = map[int]int{
+		0: 0,
+		2: 1,
+	}
+
+	rect := enigma.Rect{Top: 1, Left: 1}
+	subtotals := []float64{0, 50, 100}
+	isNumeric := []bool{false, true, true}
+
+	resRect, res := printer.printPageSubtotals(subtotals, isNumeric, sheetName, rect)
+	if res != nil {
+		t.Fatalf("unexpected error: %v", res)
+	}
+	if resRect.Width != 2 {
+		t.Errorf("expected width=2, got %d", resRect.Width)
+	}
+
+	firstValue, _ := excel.GetCellValue(sheetName, "A1")
+	if firstValue != "Page Subtotal" {
+		t.Errorf("expected first cell='Page Subtotal', got '%s'", firstValue)
+	}
+	secondValue, _ := excel.GetCellValue(sheetName, "B1")
+	if secondValue != "100" {
+		t.Errorf("expected remaining numeric cell='100', got '%s'", secondValue)
+	}
+	thirdValue, _ := excel.GetCellValue(sheetName, "C1")
+	if thirdValue != "" {
+		t.Errorf("expected no blank export column after remapping, got '%s'", thirdValue)
+	}
+}
+
 // TestExcelPagingPrinter_Validation tests report validation
 func TestExcelPagingPrinter_Validation(t *testing.T) {
 	printer := NewExcelPagingPrinter(DefaultExcelPagingConfig())
