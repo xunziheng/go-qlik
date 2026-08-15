@@ -132,6 +132,7 @@ type ColumnInfo struct {
 	AttrExprInfo      []*enigma.NxAttrExprInfo
 	AttrDimInfo       []*enigma.NxAttrDimInfo
 	Error             *enigma.NxValidationError
+	IsMeasure         bool
 }
 
 func NewColumnInfoFromDimension(dim *enigma.NxDimensionInfo) *ColumnInfo {
@@ -142,6 +143,7 @@ func NewColumnInfoFromDimension(dim *enigma.NxDimensionInfo) *ColumnInfo {
 		AttrDimInfo:       dim.AttrDimInfo,
 		AttrExprInfo:      dim.AttrExprInfo,
 		Error:             dim.Error,
+		IsMeasure:         false,
 	}
 }
 
@@ -153,6 +155,7 @@ func NewColumnInfoFromMeasure(m *enigma.NxMeasureInfo) *ColumnInfo {
 		AttrDimInfo:       m.AttrDimInfo,
 		AttrExprInfo:      m.AttrExprInfo,
 		Error:             m.Error,
+		IsMeasure:         true,
 	}
 }
 

@@ -1015,15 +1015,19 @@ func (p *ExcelPagingPrinter) printTableRows(rows [][]*enigma.NxCell, sheet strin
 	logger := p.logger.With().Str("print", "tableRows").Logger()
 	colCount := len(p.layout.ColumnInfos)
 	subtotals := make([]float64, colCount)
-	isNumeric := make([]bool, colCount)
+	isNumericColumn := make([]bool, colCount)
+	canAggregate := make([]bool, colCount)
+	subtotalHasValue := make([]bool, colCount)
 
-	// Determine which columns are numeric
+	// Keep numeric cell output separate from aggregation eligibility. Numeric
+	// dimensions should remain numeric in Excel, but only measures may be totaled.
 	for ci, colInfo := range p.layout.ColumnInfos {
 		if colInfo == nil {
 			continue
 		}
 		if colInfo.NumFormat != nil && colInfo.NumFormat.Type != "U" {
-			isNumeric[ci] = true
+			isNumericColumn[ci] = true
+			canAggregate[ci] = colInfo.IsMeasure
 		}
 
 		if p.report.ColumnHeaderFormats != nil {
@@ -1031,7 +1035,7 @@ func (p *ExcelPagingPrinter) printTableRows(rows [][]*enigma.NxCell, sheet strin
 			if colHeaderFmt, ok := p.report.ColumnHeaderFormats[cellText]; ok {
 				if colHeaderFmt.ColumnType != StaticColumnType && colHeaderFmt.DisableSubtotals {
 					logger.Debug().Msgf("column %d (%s) subtotals disabled by column header format", ci, cellText)
-					isNumeric[ci] = false
+					canAggregate[ci] = false
 				}
 			}
 		}
@@ -1065,11 +1069,14 @@ func (p *ExcelPagingPrinter) printTableRows(rows [][]*enigma.NxCell, sheet strin
 				}
 			}
 
-			if isNum && hasColInfo && isNumeric[ci] {
+			if isNum && hasColInfo && isNumericColumn[ci] {
 				p.excel.SetCellFloat(sheet, cellName, cellNum, -1, 64)
-				subtotals[ci] += cellNum
 			} else {
 				p.excel.SetCellStr(sheet, cellName, cell.Text)
+			}
+			if isNum && canAggregate[ci] {
+				subtotals[ci] += cellNum
+				subtotalHasValue[ci] = true
 			}
 
 			// Apply cell style
@@ -1164,7 +1171,7 @@ func (p *ExcelPagingPrinter) printTableRows(rows [][]*enigma.NxCell, sheet strin
 		}
 	}
 
-	return subtotals, isNumeric, nil
+	return subtotals, subtotalHasValue, nil
 }
 
 // printPage prints a single page with all sections
@@ -1269,7 +1276,7 @@ func (p *ExcelPagingPrinter) printPage(pageNum int, rows [][]*enigma.NxCell, tot
 
 	// 9. Table Rows
 	dataRect := enigma.Rect{Top: currentRow, Left: 1}
-	subtotals, isNumeric, res := p.printTableRows(rows, sheetName, dataRect)
+	subtotals, subtotalHasValue, res := p.printTableRows(rows, sheetName, dataRect)
 	if res != nil {
 		return res.With("printTableRows")
 	}
@@ -1278,7 +1285,7 @@ func (p *ExcelPagingPrinter) printPage(pageNum int, rows [][]*enigma.NxCell, tot
 	// 10. Page Subtotals (optional)
 	if p.Config.ShowSubtotals {
 		rect := enigma.Rect{Top: currentRow, Left: 1}
-		_, res := p.printPageSubtotals(subtotals, isNumeric, sheetName, rect)
+		_, res := p.printPageSubtotals(subtotals, subtotalHasValue, sheetName, rect)
 		if res != nil {
 			return res.With("printPageSubtotals")
 		}
@@ -1521,6 +1528,9 @@ func (p *ExcelPagingPrinter) Print(r Report) *util.Result {
 		for _, row := range allRows {
 			for ci, cell := range row {
 				if cell == nil {
+					continue
+				}
+				if ci >= len(p.layout.ColumnInfos) || p.layout.ColumnInfos[ci] == nil || !p.layout.ColumnInfos[ci].IsMeasure {
 					continue
 				}
 				cellNum := float64(cell.Num)
