@@ -123,6 +123,31 @@ func (p *ExcelPagingPrinter) setRowHeight(sheet string, startRow, endRow int) *u
 	return nil
 }
 
+// setGlobalColumnWidth applies the configured global width to a contiguous
+// range of worksheet columns.
+func (p *ExcelPagingPrinter) setGlobalColumnWidth(sheet string, startCol, endCol int) *util.Result {
+	if startCol > endCol || p.report.ColumnHeaderFormats == nil {
+		return nil
+	}
+	globalFormat, ok := p.report.ColumnHeaderFormats["__global"]
+	if !ok || globalFormat.Width <= 0 {
+		return nil
+	}
+
+	startColName, err := excelize.ColumnNumberToName(startCol)
+	if err != nil {
+		return util.Error("ColumnNumberToName", err)
+	}
+	endColName, err := excelize.ColumnNumberToName(endCol)
+	if err != nil {
+		return util.Error("ColumnNumberToName", err)
+	}
+	if err := p.excel.SetColWidth(sheet, startColName, endColName, globalFormat.Width); err != nil {
+		return util.Error("SetColWidth", err)
+	}
+	return nil
+}
+
 // printHorizontalSelection prints current selections in horizontal format
 // Field names in one row, field values in the next row
 func (p *ExcelPagingPrinter) printHorizontalSelection(sheet string, rect enigma.Rect) (*enigma.Rect, *util.Result) {
@@ -1204,6 +1229,11 @@ func (p *ExcelPagingPrinter) printPage(pageNum int, rows [][]*enigma.NxCell, tot
 		selRect, res := p.printHorizontalSelection(sheetName, rect)
 		if res != nil {
 			return res.With("printHorizontalSelection")
+		}
+		if selRect.Width > colCount {
+			if res := p.setGlobalColumnWidth(sheetName, rect.Left+colCount, rect.Left+selRect.Width-1); res != nil {
+				return res.With("setGlobalColumnWidth")
+			}
 		}
 		if selRect.Height > 0 {
 			currentRow += selRect.Height + 1 // +1 for blank row

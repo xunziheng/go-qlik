@@ -177,6 +177,44 @@ func TestExcelPagingPrinter_PrintTotalRecords(t *testing.T) {
 	}
 }
 
+func TestExcelPagingPrinter_SetGlobalColumnWidth(t *testing.T) {
+	printer := NewExcelPagingPrinter(DefaultExcelPagingConfig())
+	excel := excelize.NewFile()
+	sheetName := "TestSheet"
+	excel.NewSheet(sheetName)
+
+	printer.excel = excel
+	printer.report = Report{
+		ColumnHeaderFormats: map[string]ColumnHeaderFormat{
+			"__global": {Width: 20},
+		},
+	}
+
+	if err := excel.SetColWidth(sheetName, "A", "A", 12); err != nil {
+		t.Fatalf("failed to set existing data column width: %v", err)
+	}
+	if res := printer.setGlobalColumnWidth(sheetName, 4, 5); res != nil {
+		t.Fatalf("unexpected error: %v", res)
+	}
+
+	dataWidth, err := excel.GetColWidth(sheetName, "A")
+	if err != nil {
+		t.Fatalf("failed to read data column width: %v", err)
+	}
+	if dataWidth != 12 {
+		t.Errorf("existing data column width should remain 12, got %v", dataWidth)
+	}
+	for _, column := range []string{"D", "E"} {
+		width, err := excel.GetColWidth(sheetName, column)
+		if err != nil {
+			t.Fatalf("failed to read selection column %s width: %v", column, err)
+		}
+		if width != 20 {
+			t.Errorf("expected selection column %s width=20, got %v", column, width)
+		}
+	}
+}
+
 // TestExcelPagingPrinter_PrintColumnNumbers tests column number printing
 func TestExcelPagingPrinter_PrintColumnNumbers(t *testing.T) {
 	printer := NewExcelPagingPrinter(DefaultExcelPagingConfig())
