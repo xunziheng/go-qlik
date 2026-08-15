@@ -908,7 +908,9 @@ func (p *ExcelPagingPrinter) printCustomHeaders(colCount int, sheet string, rect
 	return &resRect, nil
 }
 
-// printCustomFooters prints custom footers section using merged cells spanning the full table width
+// printCustomFooters prints custom footers. PDF output keeps footers merged and
+// wrapped across the table. Excel output uses the first cell without wrapping,
+// allowing the text to flow across the following empty cells.
 func (p *ExcelPagingPrinter) printCustomFooters(colCount int, sheet string, rect enigma.Rect) (*enigma.Rect, *util.Result) {
 	resRect := rect
 	resRect.Height = 0
@@ -925,6 +927,7 @@ func (p *ExcelPagingPrinter) printCustomFooters(colCount int, sheet string, rect
 		footerRowStart += p.report.FootersOffset.Top
 		footerColStart += p.report.FootersOffset.Left
 	}
+	convertToPDF := p.report.PaginationConfig != nil && p.report.PaginationConfig.ConverToPDF
 
 	for fi, footer := range p.report.Footers {
 		// Evaluate text value
@@ -939,25 +942,30 @@ func (p *ExcelPagingPrinter) printCustomFooters(colCount int, sheet string, rect
 			}
 		}
 
-		// Merge all columns in this row into one cell
+		// PDF keeps the existing merged layout. Excel uses only the first cell
+		// and lets the text flow across the following empty cells.
 		startCell, _ := excelize.CoordinatesToCellName(footerColStart, footerRowStart+fi)
 		endCell, _ := excelize.CoordinatesToCellName(footerColStart+colCount-1, footerRowStart+fi)
-		if err := p.excel.MergeCell(sheet, startCell, endCell); err != nil {
-			return nil, util.Error("MergeCell", err)
+		styleEndCell := startCell
+		if convertToPDF {
+			if err := p.excel.MergeCell(sheet, startCell, endCell); err != nil {
+				return nil, util.Error("MergeCell", err)
+			}
+			styleEndCell = endCell
 		}
 
 		// Print joined label + text
 		p.excel.SetCellStr(sheet, startCell, footer.Label+" "+textVal)
 		styleId, err := p.excel.NewStyle(&excelize.Style{
 			Alignment: &excelize.Alignment{
-				WrapText: true,
+				WrapText: convertToPDF,
 				Vertical: "top",
 			},
 		})
 		if err != nil {
 			return nil, util.Error("NewStyle", err)
 		}
-		if err := p.excel.SetCellStyle(sheet, startCell, endCell, styleId); err != nil {
+		if err := p.excel.SetCellStyle(sheet, startCell, styleEndCell, styleId); err != nil {
 			return nil, util.Error("SetCellStyle", err)
 		}
 	}

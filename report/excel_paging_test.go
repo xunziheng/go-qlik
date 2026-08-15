@@ -215,6 +215,74 @@ func TestExcelPagingPrinter_SetGlobalColumnWidth(t *testing.T) {
 	}
 }
 
+func TestExcelPagingPrinter_PrintCustomFootersByOutputMode(t *testing.T) {
+	tests := []struct {
+		name          string
+		convertToPDF  bool
+		expectedMerge bool
+	}{
+		{name: "excel footer is not merged", convertToPDF: false, expectedMerge: false},
+		{name: "pdf footer remains merged", convertToPDF: true, expectedMerge: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			printer := NewExcelPagingPrinter(DefaultExcelPagingConfig())
+			excel := excelize.NewFile()
+			sheetName := "TestSheet"
+			excel.NewSheet(sheetName)
+
+			printer.excel = excel
+			printer.report = Report{
+				Footers: []CustomHeader{{Label: "Note:", Text: "Long footer text"}},
+				PaginationConfig: &PaginationConfig{
+					ConverToPDF: tt.convertToPDF,
+				},
+			}
+
+			resRect, res := printer.printCustomFooters(3, sheetName, enigma.Rect{Top: 1, Left: 1})
+			if res != nil {
+				t.Fatalf("unexpected error: %v", res)
+			}
+			if resRect.Height != 1 || resRect.Width != 3 {
+				t.Errorf("expected footer rectangle 1x3, got %dx%d", resRect.Height, resRect.Width)
+			}
+
+			value, err := excel.GetCellValue(sheetName, "A1")
+			if err != nil {
+				t.Fatalf("failed to read footer value: %v", err)
+			}
+			if value != "Note: Long footer text" {
+				t.Errorf("unexpected footer value %q", value)
+			}
+
+			mergedCells, err := excel.GetMergeCells(sheetName)
+			if err != nil {
+				t.Fatalf("failed to read merged cells: %v", err)
+			}
+			if tt.expectedMerge {
+				if len(mergedCells) != 1 || mergedCells[0].GetStartAxis() != "A1" || mergedCells[0].GetEndAxis() != "C1" {
+					t.Fatalf("expected PDF footer merge A1:C1, got %v", mergedCells)
+				}
+			} else if len(mergedCells) != 0 {
+				t.Fatalf("expected no merged cells for Excel footer, got %v", mergedCells)
+			}
+
+			styleID, err := excel.GetCellStyle(sheetName, "A1")
+			if err != nil {
+				t.Fatalf("failed to read footer style: %v", err)
+			}
+			style, err := excel.GetStyle(styleID)
+			if err != nil {
+				t.Fatalf("failed to resolve footer style: %v", err)
+			}
+			if style.Alignment == nil || style.Alignment.WrapText != tt.convertToPDF {
+				t.Errorf("expected footer wrapText=%v, got %+v", tt.convertToPDF, style.Alignment)
+			}
+		})
+	}
+}
+
 // TestExcelPagingPrinter_PrintColumnNumbers tests column number printing
 func TestExcelPagingPrinter_PrintColumnNumbers(t *testing.T) {
 	printer := NewExcelPagingPrinter(DefaultExcelPagingConfig())
