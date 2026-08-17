@@ -21,6 +21,9 @@ func TestDefaultExcelPagingConfig(t *testing.T) {
 	if config.TotalRecordsLabel != "Total Records Found" {
 		t.Errorf("expected TotalRecordsLabel='Total Records Found', got '%s'", config.TotalRecordsLabel)
 	}
+	if !config.ShowTotalRecords {
+		t.Error("expected ShowTotalRecords=true")
+	}
 	if config.ShowColumnNumbers {
 		t.Error("expected ShowColumnNumbers=false")
 	}

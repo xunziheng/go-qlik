@@ -130,6 +130,7 @@ type ColumnHeaderFormat struct {
 // 15	Quarto			215 x 275 mm
 type PaginationConfig struct {
 	RowsPerPage       int           `json:"rows_per_page,omitempty" yaml:"rows_per_page,omitempty" bson:"rows_per_page,omitempty"`
+	ShowTotalRecords  *bool         `json:"show_total_records,omitempty" yaml:"show_total_records,omitempty" bson:"show_total_records,omitempty"`
 	TotalRecordsLabel string        `json:"total_records_label" yaml:"total_records_label" bson:"total_records_label"`
 	ShowColumnNumbers bool          `json:"show_column_numbers" yaml:"show_column_numbers"`
 	ShowSubtotals     bool          `json:"show_subtotals" yaml:"show_subtotals"`

@@ -27,6 +27,7 @@ type HeaderGroup struct {
 type ExcelPagingConfig struct {
 	RowsPerPage       int           `json:"rows_per_page" yaml:"rows_per_page"`
 	ReportTitle       string        `json:"report_title" yaml:"report_title"`
+	ShowTotalRecords  bool          `json:"show_total_records" yaml:"show_total_records"`
 	TotalRecordsLabel string        `json:"total_records_label" yaml:"total_records_label"`
 	ShowColumnNumbers bool          `json:"show_column_numbers" yaml:"show_column_numbers"`
 	ShowSubtotals     bool          `json:"show_subtotals" yaml:"show_subtotals"`
@@ -43,6 +44,7 @@ func DefaultExcelPagingConfig() ExcelPagingConfig {
 	return ExcelPagingConfig{
 		RowsPerPage:       50,
 		ReportTitle:       "Paginated Report",
+		ShowTotalRecords:  true,
 		TotalRecordsLabel: "Total Records Found",
 		ShowColumnNumbers: false,
 		ShowSubtotals:     false,
@@ -1293,7 +1295,7 @@ func (p *ExcelPagingPrinter) printPage(pageNum int, rows [][]*enigma.NxCell, tot
 	}
 
 	// 6. Total Records
-	{
+	if p.Config.ShowTotalRecords {
 		rect := enigma.Rect{Top: currentRow, Left: 1}
 		_, res := p.printTotalRecords(totalRows, colCount, sheetName, rect)
 		if res != nil {
@@ -1383,6 +1385,9 @@ func (p *ExcelPagingPrinter) Print(r Report) *util.Result {
 	if r.PaginationConfig != nil {
 		if r.PaginationConfig.RowsPerPage > 0 {
 			p.Config.RowsPerPage = r.PaginationConfig.RowsPerPage
+		}
+		if r.PaginationConfig.ShowTotalRecords != nil {
+			p.Config.ShowTotalRecords = *r.PaginationConfig.ShowTotalRecords
 		}
 		if r.PaginationConfig.TotalRecordsLabel != "" {
 			p.Config.TotalRecordsLabel = r.PaginationConfig.TotalRecordsLabel
