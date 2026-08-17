@@ -97,6 +97,20 @@ func (p *ExcelPagingPrinter) isColumnExcluded(title string) bool {
 	return false
 }
 
+func (p *ExcelPagingPrinter) isColumnTotalDisabled(columnIndex int) bool {
+	if p.layout == nil || columnIndex < 0 || columnIndex >= len(p.layout.ColumnInfos) {
+		return false
+	}
+
+	columnInfo := p.layout.ColumnInfos[columnIndex]
+	if columnInfo == nil || p.report.ColumnHeaderFormats == nil {
+		return false
+	}
+
+	columnFormat, ok := p.report.ColumnHeaderFormats[columnInfo.FallbackTitle]
+	return ok && columnFormat.ColumnType != StaticColumnType && columnFormat.DisableSubtotals
+}
+
 func (p *ExcelPagingPrinter) exportedColumnCount() int {
 	count := 0
 	for _, colInfo := range p.layout.ColumnInfos {
@@ -1075,14 +1089,9 @@ func (p *ExcelPagingPrinter) printTableRows(rows [][]*enigma.NxCell, sheet strin
 			canAggregate[ci] = colInfo.IsMeasure
 		}
 
-		if p.report.ColumnHeaderFormats != nil {
-			cellText := colInfo.FallbackTitle
-			if colHeaderFmt, ok := p.report.ColumnHeaderFormats[cellText]; ok {
-				if colHeaderFmt.ColumnType != StaticColumnType && colHeaderFmt.DisableSubtotals {
-					logger.Debug().Msgf("column %d (%s) subtotals disabled by column header format", ci, cellText)
-					canAggregate[ci] = false
-				}
-			}
+		if p.isColumnTotalDisabled(ci) {
+			logger.Debug().Msgf("column %d (%s) totals disabled by column header format", ci, colInfo.FallbackTitle)
+			canAggregate[ci] = false
 		}
 	}
 
@@ -1590,6 +1599,9 @@ func (p *ExcelPagingPrinter) Print(r Report) *util.Result {
 					continue
 				}
 				if ci >= len(p.layout.ColumnInfos) || p.layout.ColumnInfos[ci] == nil || !p.layout.ColumnInfos[ci].IsMeasure {
+					continue
+				}
+				if p.isColumnTotalDisabled(ci) {
 					continue
 				}
 				cellNum := float64(cell.Num)

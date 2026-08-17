@@ -412,6 +412,28 @@ func TestExcelPagingPrinter_CustomTotalLabels(t *testing.T) {
 	}
 }
 
+func TestExcelPagingPrinter_DisableSubtotalsAlsoDisablesGrandTotal(t *testing.T) {
+	printer := NewExcelPagingPrinter(DefaultExcelPagingConfig())
+	printer.layout = &engine.ObjectLayoutEx{
+		ColumnInfos: []*engine.ColumnInfo{
+			{FallbackTitle: "Category", IsMeasure: false},
+			{FallbackTitle: "Sales", IsMeasure: true},
+		},
+	}
+	printer.report = Report{
+		ColumnHeaderFormats: map[string]ColumnHeaderFormat{
+			"Sales": {DisableSubtotals: true},
+		},
+	}
+
+	if !printer.isColumnTotalDisabled(1) {
+		t.Error("expected DisableSubtotals to disable both subtotal and grand total for Sales")
+	}
+	if printer.isColumnTotalDisabled(0) {
+		t.Error("expected Category totals to remain enabled")
+	}
+}
+
 func TestExcelPagingPrinter_PrintPageSubtotalsWithExcludedColumn(t *testing.T) {
 	printer := NewExcelPagingPrinter(DefaultExcelPagingConfig())
 	excel := excelize.NewFile()
