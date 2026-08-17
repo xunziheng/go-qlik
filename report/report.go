@@ -133,7 +133,9 @@ type PaginationConfig struct {
 	TotalRecordsLabel string        `json:"total_records_label" yaml:"total_records_label" bson:"total_records_label"`
 	ShowColumnNumbers bool          `json:"show_column_numbers" yaml:"show_column_numbers"`
 	ShowSubtotals     bool          `json:"show_subtotals" yaml:"show_subtotals"`
+	SubtotalLabel     string        `json:"subtotal_label,omitempty" yaml:"subtotal_label,omitempty" bson:"subtotal_label,omitempty"`
 	ShowGrandTotals   bool          `json:"show_grand_totals" yaml:"show_grand_totals"`
+	GrandTotalLabel   string        `json:"grand_total_label,omitempty" yaml:"grand_total_label,omitempty" bson:"grand_total_label,omitempty"`
 	ConverToPDF       bool          `json:"convert_to_pdf" yaml:"convert_to_pdf" bson:"convert_to_pdf"`
 	HeaderGroups      []HeaderGroup `json:"header_groups,omitempty" yaml:"header_groups,omitempty" bson:"header_groups,omitempty"`
 	PageSize          int           `json:"page_size,omitempty" yaml:"page_size,omitempty" bson:"page_size,omitempty"`                      // only for PDF

@@ -27,6 +27,12 @@ func TestDefaultExcelPagingConfig(t *testing.T) {
 	if config.ShowSubtotals {
 		t.Error("expected ShowSubtotals=false")
 	}
+	if config.SubtotalLabel != "Page Subtotal" {
+		t.Errorf("expected SubtotalLabel='Page Subtotal', got '%s'", config.SubtotalLabel)
+	}
+	if config.GrandTotalLabel != "Grand Total" {
+		t.Errorf("expected GrandTotalLabel='Grand Total', got '%s'", config.GrandTotalLabel)
+	}
 }
 
 // TestNewExcelPagingPrinter tests printer creation with various configs
@@ -366,6 +372,40 @@ func TestExcelPagingPrinter_PrintPageSubtotals(t *testing.T) {
 	numValue, _ := excel.GetCellValue(sheetName, numCell)
 	if numValue != "100.5" {
 		t.Errorf("expected numeric cell='100.5', got '%s'", numValue)
+	}
+}
+
+func TestExcelPagingPrinter_CustomTotalLabels(t *testing.T) {
+	config := DefaultExcelPagingConfig()
+	config.SubtotalLabel = "Subtotal"
+	config.GrandTotalLabel = "Overall Total"
+	printer := NewExcelPagingPrinter(config)
+	excel := excelize.NewFile()
+	sheetName := "TestSheet"
+	excel.NewSheet(sheetName)
+
+	printer.excel = excel
+	printer.logger = loggers.CoreDebugLogger
+	printer.report = Report{AllBorders: false}
+	printer.layout = &engine.ObjectLayoutEx{}
+
+	rect := enigma.Rect{Top: 1, Left: 1}
+	values := []float64{0, 100.5}
+	isNumeric := []bool{false, true}
+
+	if _, res := printer.printPageSubtotals(values, isNumeric, sheetName, rect); res != nil {
+		t.Fatalf("unexpected subtotal error: %v", res)
+	}
+	if value, _ := excel.GetCellValue(sheetName, "A1"); value != "Subtotal" {
+		t.Errorf("expected custom subtotal label='Subtotal', got '%s'", value)
+	}
+
+	rect.Top = 2
+	if _, res := printer.printGrandTotals(values, isNumeric, sheetName, rect); res != nil {
+		t.Fatalf("unexpected grand total error: %v", res)
+	}
+	if value, _ := excel.GetCellValue(sheetName, "A2"); value != "Overall Total" {
+		t.Errorf("expected custom grand total label='Overall Total', got '%s'", value)
 	}
 }
 

@@ -30,7 +30,9 @@ type ExcelPagingConfig struct {
 	TotalRecordsLabel string        `json:"total_records_label" yaml:"total_records_label"`
 	ShowColumnNumbers bool          `json:"show_column_numbers" yaml:"show_column_numbers"`
 	ShowSubtotals     bool          `json:"show_subtotals" yaml:"show_subtotals"`
+	SubtotalLabel     string        `json:"subtotal_label" yaml:"subtotal_label"`
 	ShowGrandTotals   bool          `json:"show_grand_totals" yaml:"show_grand_totals"`
+	GrandTotalLabel   string        `json:"grand_total_label" yaml:"grand_total_label"`
 	HeaderGroups      []HeaderGroup `json:"header_groups" yaml:"header_groups"`
 	PageSize          int           `json:"page_size,omitempty" yaml:"page_size,omitempty" bson:"page_size,omitempty"`                      // only for PDF
 	PageOrientation   string        `json:"page_orientation,omitempty" yaml:"page_orientation,omitempty" bson:"page_orientation,omitempty"` // only for PDF, values: "landscape", "portrait"
@@ -44,6 +46,8 @@ func DefaultExcelPagingConfig() ExcelPagingConfig {
 		TotalRecordsLabel: "Total Records Found",
 		ShowColumnNumbers: false,
 		ShowSubtotals:     false,
+		SubtotalLabel:     "Page Subtotal",
+		GrandTotalLabel:   "Grand Total",
 		PageSize:          9, // Default to A4 size (9)
 		PageOrientation:   "landscape",
 	}
@@ -70,6 +74,12 @@ func NewExcelPagingPrinter(config ExcelPagingConfig) *ExcelPagingPrinter {
 	}
 	if config.TotalRecordsLabel == "" {
 		config.TotalRecordsLabel = "Total Records Found"
+	}
+	if config.SubtotalLabel == "" {
+		config.SubtotalLabel = "Page Subtotal"
+	}
+	if config.GrandTotalLabel == "" {
+		config.GrandTotalLabel = "Grand Total"
 	}
 	p := &ExcelPagingPrinter{Config: config}
 	p.ReportResults = make(map[string]*ReportResult)
@@ -467,7 +477,7 @@ func (p *ExcelPagingPrinter) printPageSubtotals(subtotals []float64, isNumeric [
 		}
 
 		if reportColIx == 0 {
-			p.excel.SetCellStr(sheet, cellName, "Page Subtotal")
+			p.excel.SetCellStr(sheet, cellName, p.Config.SubtotalLabel)
 		} else if isNumeric[ci] {
 			p.excel.SetCellFloat(sheet, cellName, subtotal, -1, 64)
 		}
@@ -530,7 +540,7 @@ func (p *ExcelPagingPrinter) printGrandTotals(grandTotals []float64, isNumeric [
 		}
 
 		if reportColIx == 0 {
-			p.excel.SetCellStr(sheet, cellName, "Grand Total")
+			p.excel.SetCellStr(sheet, cellName, p.Config.GrandTotalLabel)
 			logger.Debug().Msgf("col[%d] %s: Grand Total label", ci, cellName)
 		} else if isNumeric[ci] {
 			p.excel.SetCellFloat(sheet, cellName, total, -1, 64)
@@ -1383,8 +1393,14 @@ func (p *ExcelPagingPrinter) Print(r Report) *util.Result {
 		if r.PaginationConfig.ShowSubtotals {
 			p.Config.ShowSubtotals = r.PaginationConfig.ShowSubtotals
 		}
+		if r.PaginationConfig.SubtotalLabel != "" {
+			p.Config.SubtotalLabel = r.PaginationConfig.SubtotalLabel
+		}
 		if r.PaginationConfig.ShowGrandTotals {
 			p.Config.ShowGrandTotals = r.PaginationConfig.ShowGrandTotals
+		}
+		if r.PaginationConfig.GrandTotalLabel != "" {
+			p.Config.GrandTotalLabel = r.PaginationConfig.GrandTotalLabel
 		}
 		if r.PaginationConfig.HeaderGroups != nil {
 			p.Config.HeaderGroups = r.PaginationConfig.HeaderGroups
