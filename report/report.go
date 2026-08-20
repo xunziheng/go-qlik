@@ -143,6 +143,13 @@ type PaginationConfig struct {
 	PageOrientation   string        `json:"page_orientation,omitempty" yaml:"page_orientation,omitempty" bson:"page_orientation,omitempty"` // only for PDF, values: "landscape", "portrait"
 }
 
+// CurrentSelectionItem is a selection supplied by the caller for display in
+// the report. It does not alter the app's selection state.
+type CurrentSelectionItem struct {
+	Field    string `json:"field" yaml:"field" bson:"field"`
+	Selected string `json:"selected" yaml:"selected" bson:"selected"`
+}
+
 // user has to apply any needed selection before printing report
 type Report struct {
 	ID    *string `json:"id,omitempty" yaml:"id,omitempty" bson:"id,omitempty"`
@@ -161,22 +168,23 @@ type Report struct {
 	TargetIDs      []string       `json:"target_ids,omitempty" yaml:"target_ids,omitempty" bson:"target_ids,omitempty"`
 
 	// layout
-	Headers                []CustomHeader                `json:"headers,omitempty" yaml:"headers,omitempty" bson:"headers,omitempty"`
-	HeadersOffset          *enigma.Rect                  `json:"headers_offset,omitempty" yaml:"headers_offset,omitempty" bson:"headers_offset,omitempty"`
-	HeadersRowHeight       *float64                      `json:"headers_row_height,omitempty" yaml:"headers_row_height,omitempty" bson:"headers_row_height,omitempty"`
-	OptionalTargetTitles   map[string]string             `json:"optional_target_titles,omitempty" yaml:"optional_target_titles,omitempty" bson:"optional_target_titles,omitempty"`
-	OutputCurrentSelection bool                          `json:"output_current_selection,omitempty" yaml:"output_current_selection,omitempty" bson:"output_current_selection,omitempty"`
-	CurrentSelectionOrder  map[string]int                `json:"current_selection_order" yaml:"current_selection_order" bson:"current_selection_order"`
-	ColumnHeaderFormats    map[string]ColumnHeaderFormat `json:"column_header_formats,omitempty" yaml:"column_header_formats,omitempty" bson:"column_header_formats,omitempty"` // only supports stack object
-	ExcludedColumnTitles   []string                      `json:"excluded_column_titles,omitempty" yaml:"excluded_column_titles,omitempty" bson:"excluded_column_titles,omitempty"`
-	BoldHeader             bool                          `json:"bold_header,omitempty" yaml:"bold_header,omitempty" bson:"bold_header,omitempty"`
-	AllBorders             bool                          `json:"all_borders,omitempty" yaml:"all_borders,omitempty" bson:"all_borders,omitempty"`
-	Footers                []CustomHeader                `json:"footers,omitempty" yaml:"footers,omitempty" bson:"footers,omitempty"`
-	FootersOffset          *enigma.Rect                  `json:"footers_offset,omitempty" yaml:"footers_offset,omitempty" bson:"footers_offset,omitempty"`
-	Legends                []Legend                      `json:"legends,omitempty" yaml:"legends,omitempty" bson:"legends,omitempty"`
-	LegendOffset           *enigma.Rect                  `json:"legend_offset,omitempty" yaml:"legend_offset,omitempty" bson:"legend_offset,omitempty"`
-	RowHeight              *float64                      `json:"row_height,omitempty" yaml:"row_height,omitempty" bson:"row_height,omitempty"`
-	TableWrapText          bool                          `json:"table_wrap_text,omitempty" yaml:"table_wrap_text,omitempty" bson:"table_wrap_text,omitempty"`
+	Headers                     []CustomHeader                `json:"headers,omitempty" yaml:"headers,omitempty" bson:"headers,omitempty"`
+	HeadersOffset               *enigma.Rect                  `json:"headers_offset,omitempty" yaml:"headers_offset,omitempty" bson:"headers_offset,omitempty"`
+	HeadersRowHeight            *float64                      `json:"headers_row_height,omitempty" yaml:"headers_row_height,omitempty" bson:"headers_row_height,omitempty"`
+	OptionalTargetTitles        map[string]string             `json:"optional_target_titles,omitempty" yaml:"optional_target_titles,omitempty" bson:"optional_target_titles,omitempty"`
+	OutputCurrentSelection      bool                          `json:"output_current_selection,omitempty" yaml:"output_current_selection,omitempty" bson:"output_current_selection,omitempty"`
+	PredefinedCurrentSelections []CurrentSelectionItem        `json:"predefined_current_selections,omitempty" yaml:"predefined_current_selections,omitempty" bson:"predefined_current_selections,omitempty"`
+	CurrentSelectionOrder       map[string]int                `json:"current_selection_order" yaml:"current_selection_order" bson:"current_selection_order"`
+	ColumnHeaderFormats         map[string]ColumnHeaderFormat `json:"column_header_formats,omitempty" yaml:"column_header_formats,omitempty" bson:"column_header_formats,omitempty"` // only supports stack object
+	ExcludedColumnTitles        []string                      `json:"excluded_column_titles,omitempty" yaml:"excluded_column_titles,omitempty" bson:"excluded_column_titles,omitempty"`
+	BoldHeader                  bool                          `json:"bold_header,omitempty" yaml:"bold_header,omitempty" bson:"bold_header,omitempty"`
+	AllBorders                  bool                          `json:"all_borders,omitempty" yaml:"all_borders,omitempty" bson:"all_borders,omitempty"`
+	Footers                     []CustomHeader                `json:"footers,omitempty" yaml:"footers,omitempty" bson:"footers,omitempty"`
+	FootersOffset               *enigma.Rect                  `json:"footers_offset,omitempty" yaml:"footers_offset,omitempty" bson:"footers_offset,omitempty"`
+	Legends                     []Legend                      `json:"legends,omitempty" yaml:"legends,omitempty" bson:"legends,omitempty"`
+	LegendOffset                *enigma.Rect                  `json:"legend_offset,omitempty" yaml:"legend_offset,omitempty" bson:"legend_offset,omitempty"`
+	RowHeight                   *float64                      `json:"row_height,omitempty" yaml:"row_height,omitempty" bson:"row_height,omitempty"`
+	TableWrapText               bool                          `json:"table_wrap_text,omitempty" yaml:"table_wrap_text,omitempty" bson:"table_wrap_text,omitempty"`
 
 	// output
 	Driver               *string           `json:"driver,omitempty" yaml:"driver,omitempty" bson:"driver,omitempty"`

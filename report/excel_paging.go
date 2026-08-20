@@ -214,7 +214,7 @@ func (p *ExcelPagingPrinter) printHorizontalSelection(sheet string, rect enigma.
 		}
 		selections[state] = selObj.Selections
 	}
-	if len(selections) == 0 {
+	if len(selections) == 0 && len(p.report.PredefinedCurrentSelections) == 0 {
 		return &resRect, nil
 	}
 
@@ -240,7 +240,13 @@ func (p *ExcelPagingPrinter) printHorizontalSelection(sheet string, rect enigma.
 		name   string
 		values string
 	}
-	items := make([]selectionItem, 0)
+	items := make([]selectionItem, 0, len(p.report.PredefinedCurrentSelections))
+	for _, sel := range p.report.PredefinedCurrentSelections {
+		if strings.TrimSpace(sel.Field) == "" {
+			continue
+		}
+		items = append(items, selectionItem{name: sel.Field, values: sel.Selected})
+	}
 
 	for state, sels := range selections {
 		logger.Debug().Msgf("processing selections for state %s", state)
