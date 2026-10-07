@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,6 +13,16 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/soderasen-au/go-common/util"
 )
+
+// libreOfficeProfileURL encodes an absolute filesystem path as a file URL.
+// Keep the filesystem path unchanged; only the LibreOffice argument is escaped.
+func libreOfficeProfileURL(absPath string) string {
+	path := filepath.ToSlash(absPath)
+	if len(path) == 0 || path[0] != '/' {
+		path = "/" + path
+	}
+	return (&url.URL{Scheme: "file", Path: path}).String()
+}
 
 // ExcelToPDFTaskConfig holds configuration for a single Excel-to-PDF conversion task
 type ExcelToPDFTaskConfig struct {
@@ -258,11 +269,7 @@ func (l *LibreExcel2PDF) executeConversion(ctx context.Context, config ExcelToPD
 		return util.Error("filepath.Abs(workerProfileDir)", err)
 	}
 
-	userInstallPath := filepath.ToSlash(absWorkerProfileDir)
-	if len(userInstallPath) > 0 && userInstallPath[0] == '/' {
-		userInstallPath = userInstallPath[1:]
-	}
-	userInstallURL := "file:///" + userInstallPath
+	userInstallURL := libreOfficeProfileURL(absWorkerProfileDir)
 	args := []string{
 		fmt.Sprintf("-env:UserInstallation=%s", userInstallURL),
 		"--headless",

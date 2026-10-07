@@ -279,6 +279,18 @@ func (p *ExcelPagingPrinter) printHorizontalSelection(sheet string, rect enigma.
 		}
 	}
 
+	// Both predefined and Engine selections now have their final display names.
+	// Filter only these display items; the selections applied to the app stay intact.
+	if prefix := p.report.HiddenSelectionPrefix; prefix != "" {
+		visibleItems := items[:0]
+		for _, item := range items {
+			if !strings.HasPrefix(item.name, prefix) {
+				visibleItems = append(visibleItems, item)
+			}
+		}
+		items = visibleItems
+	}
+
 	if len(items) == 0 {
 		return &resRect, nil
 	}

@@ -173,6 +173,7 @@ type Report struct {
 	HeadersRowHeight            *float64                      `json:"headers_row_height,omitempty" yaml:"headers_row_height,omitempty" bson:"headers_row_height,omitempty"`
 	OptionalTargetTitles        map[string]string             `json:"optional_target_titles,omitempty" yaml:"optional_target_titles,omitempty" bson:"optional_target_titles,omitempty"`
 	OutputCurrentSelection      bool                          `json:"output_current_selection,omitempty" yaml:"output_current_selection,omitempty" bson:"output_current_selection,omitempty"`
+	HiddenSelectionPrefix       string                        `json:"hidden_selection_prefix,omitempty" yaml:"hidden_selection_prefix,omitempty" bson:"hidden_selection_prefix,omitempty"` // Matches final displayed selection names, without changing applied selections.
 	PredefinedCurrentSelections []CurrentSelectionItem        `json:"predefined_current_selections,omitempty" yaml:"predefined_current_selections,omitempty" bson:"predefined_current_selections,omitempty"`
 	CurrentSelectionOrder       map[string]int                `json:"current_selection_order" yaml:"current_selection_order" bson:"current_selection_order"`
 	ColumnHeaderFormats         map[string]ColumnHeaderFormat `json:"column_header_formats,omitempty" yaml:"column_header_formats,omitempty" bson:"column_header_formats,omitempty"` // only supports stack object
