@@ -275,7 +275,7 @@ func (p *ExcelPagingPrinter) printHorizontalSelection(sheet string, rect enigma.
 				fname = mappedName
 			}
 
-			items = append(items, selectionItem{state: state, name: fname, values: sel.Selected})
+			items = append(items, selectionItem{state: state, name: fname, values: decodeSelectionSummary(sel.Selected)})
 		}
 	}
 

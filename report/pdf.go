@@ -470,7 +470,7 @@ func (p *PdfReportPrinter) printCurrentSelection(r Report, doc *enigma.Doc, logg
 
 		// Print field name and selected values
 		p.pdf.CellFormat(50, PDF_LINE_HEIGHT, fname, "1", 0, "", false, 0, "")
-		p.pdf.CellFormat(0, PDF_LINE_HEIGHT, sel.Selected, "1", 0, "", false, 0, "")
+		p.pdf.CellFormat(0, PDF_LINE_HEIGHT, decodeSelectionSummary(sel.Selected), "1", 0, "", false, 0, "")
 		p.pdf.Ln(-1)
 		p.printedRows++
 	}

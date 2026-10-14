@@ -180,7 +180,7 @@ func (p *ExcelReportPrinter) printCurrentSelection(r Report, doc *enigma.Doc, sh
 			return nil, util.Error("CoordinatesToCellName", err)
 		}
 		cellLogger.Debug().Msgf("print cell: %s", sel.Selected)
-		excel.SetCellStr(sheet, cellName, sel.Selected)
+		excel.SetCellStr(sheet, cellName, decodeSelectionSummary(sel.Selected))
 	}
 
 	resRect.Height = len(selObj.Selections) + 1
